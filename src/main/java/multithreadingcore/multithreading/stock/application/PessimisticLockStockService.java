@@ -10,11 +10,10 @@ import multithreadingcore.multithreading.stock.repository.StockRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class StockService {
+public class PessimisticLockStockService {
 
     private final StockRepository stockRepository;
     private final EntityManager entityManager;
@@ -26,13 +25,24 @@ public class StockService {
         stockRepository.saveAndFlush(stock);
     }
 
+    public synchronized void synchronizedDecrease(Long id, Long quantity) {
+        Stock stock = stockRepository.findById(id).orElseThrow();
+        stock.decrease(quantity);
+        stockRepository.saveAndFlush(stock);
+    }
+
     @Transactional
-    public void pessimisticLocking(Long id, Long quantity) {
+    public void emPessimisticLockWriteDecrease(Long id, Long quantity) {
         Stock stock = entityManager.find(Stock.class, id, LockModeType.PESSIMISTIC_WRITE);
         stock.decrease(quantity);
         entityManager.merge(stock);
     }
 
-
+    @Transactional
+    public void pessimisticLock(Long id, Long quantity) {
+        Stock stock = stockRepository.findByIdWithPessimisticLock(id);
+        stock.decrease(quantity);
+        stockRepository.save(stock);
+    }
 
 }
