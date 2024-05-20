@@ -31,15 +31,10 @@ public class Coupon {
         this.quantity = quantity;
     }
 
-
-
     public void decrease(Long quantity) {
-
         if (this.quantity - quantity < 0) {
             throw new RuntimeException("0 이하가 될수없습니다.");
         }
-
         this.quantity -= quantity;
-
     }
 }
