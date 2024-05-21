@@ -8,7 +8,10 @@ import multithreadingcore.multithreading.user.entity.User;
 @Entity
 @Getter
 @ToString
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
+@Table(name = "ticket")
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Ticket {
 
@@ -17,8 +20,14 @@ public class Ticket {
     @Column(name = "id", nullable = false)
     private Long id;
 
-    private Long serial;
+    private String serial;
 
-
-
+    private Long quantity;
+    
+    public void decrease(Long quantity) {
+        if (this.quantity - quantity < 0) {
+            throw new RuntimeException("0 이하가 될수없습니다.");
+        }
+        this.quantity -= quantity;
+    }
 }

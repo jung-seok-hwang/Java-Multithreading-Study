@@ -1,21 +1,21 @@
 package multithreadingcore.multithreading.user.entity;
 
-
 import jakarta.persistence.*;
 import lombok.*;
-import multithreadingcore.multithreading.ticket.entity.AssignMemberTickets;
-import multithreadingcore.multithreading.ticket.entity.Ticket;
+import lombok.experimental.SuperBuilder;
 import multithreadingcore.multithreading.ticket.entity.TicketBuyLimit;
+import org.hibernate.annotations.ColumnDefault;
 
-import java.util.HashSet;
-import java.util.Set;
-
-
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
 @ToString
+@SuperBuilder
+@AllArgsConstructor
 @NoArgsConstructor
+@Table(name = "user")
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class User {
 
@@ -25,14 +25,20 @@ public class User {
     @EqualsAndHashCode.Include
     private Long id;
 
+    @ColumnDefault("0")
+    @Builder.Default
+    private Long ticket = 0L;
+
     @OneToMany(mappedBy = "user")
-    private Set<AssignMemberTickets> tickets = new HashSet<>();
+    private List<UserTicket> tickets = new ArrayList<>();
 
+    public void maxTicketCount(Long buy) {
+        if (ticket >= TicketBuyLimit.MAXIMUM_TICKET_COUNT.getValue()){
+            throw new IllegalArgumentException("2개 이상 구매 불가능합니다.");
+        }
 
-    public boolean maxTicketCount() {
-        return tickets.size() >= TicketBuyLimit.MAXIMUM_TICKET_COUNT.getValue();
+        ticket += buy;
+        System.out.println(ticket);
     }
-
-
 
 }
