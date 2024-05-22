@@ -3,7 +3,7 @@ package multithreadingcore.multithreading.ticket.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import multithreadingcore.multithreading.user.entity.User;
+
 
 @Entity
 @Getter
