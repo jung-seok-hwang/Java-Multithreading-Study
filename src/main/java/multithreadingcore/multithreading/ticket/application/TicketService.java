@@ -1,27 +1,23 @@
-package multithreadingcore.multithreading.user.application;
+package multithreadingcore.multithreading.ticket.application;
 
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import multithreadingcore.multithreading.ticket.entity.Ticket;
 import multithreadingcore.multithreading.user.entity.UserTicket;
 import multithreadingcore.multithreading.ticket.repository.TicketRepository;
 import multithreadingcore.multithreading.user.repository.UserTicketRepository;
 import multithreadingcore.multithreading.user.entity.User;
 import multithreadingcore.multithreading.user.repository.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.springframework.transaction.annotation.Isolation.REPEATABLE_READ;
-import static org.springframework.transaction.annotation.Isolation.SERIALIZABLE;
 
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
-public class UserService {
+public class TicketService {
 
-    private static final Logger log = LoggerFactory.getLogger(UserService.class);
     private final UserRepository userRepository;
     private final TicketRepository ticketRepository;
     private final UserTicketRepository userTicketRepository;
@@ -71,4 +67,29 @@ public class UserService {
 
         userTicketRepository.save(userTicket);
     }
+
+    @Transactional
+    public Integer userLevelLockBuy(Long userId, Long ticketId, Long quantity) {
+        //사용자 정보 찾기
+        User user = userRepository.findById(userId).orElseThrow();
+
+        //구매 할 티켓에 정보를 찾기
+        Ticket ticket = ticketRepository.findById(ticketId).orElseThrow();
+
+        //감소
+        ticket.decrease(quantity);
+        ticketRepository.saveAndFlush(ticket);
+
+        UserTicket userTicket = UserTicket.builder()
+                .user(user)
+                .ticket(ticket)
+                .build();
+
+        userTicket.addUser(user);
+
+        userTicketRepository.save(userTicket);
+
+        return user.getTicketCount();
+    }
+
 }
