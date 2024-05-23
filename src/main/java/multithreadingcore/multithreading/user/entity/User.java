@@ -41,4 +41,8 @@ public class User {
         System.out.println(ticket);
     }
 
+    public Integer getTicketCount() {
+        return this.tickets.size();
+    }
+
 }
