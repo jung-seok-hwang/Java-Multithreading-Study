@@ -1,6 +1,7 @@
 package multithreadingcore.multithreading.user.application;
 
 
+import multithreadingcore.multithreading.ticket.application.TicketService;
 import multithreadingcore.multithreading.ticket.entity.Ticket;
 import multithreadingcore.multithreading.ticket.repository.TicketRepository;
 import multithreadingcore.multithreading.user.entity.User;
@@ -29,7 +30,7 @@ public class UserServiceTest {
     UserTicketRepository userTicketRepository;
 
     @Autowired
-    UserService userService;
+    TicketService ticketService;
 
     @BeforeEach
     public void beforeTest() {
@@ -71,7 +72,7 @@ public class UserServiceTest {
             final long userId = i; // assuming user IDs are assigned sequentially starting from 1
             executorService.submit(() -> {
                 try {
-                    userService.buy(userId , 1L , 1L);
+                    ticketService.buy(userId , 1L , 1L);
                 } finally {
                     latch.countDown();
                 }

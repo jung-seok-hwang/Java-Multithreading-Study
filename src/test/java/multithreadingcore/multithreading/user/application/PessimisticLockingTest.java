@@ -1,5 +1,6 @@
 package multithreadingcore.multithreading.user.application;
 
+import multithreadingcore.multithreading.ticket.application.TicketService;
 import multithreadingcore.multithreading.ticket.entity.Ticket;
 import multithreadingcore.multithreading.ticket.repository.TicketRepository;
 import multithreadingcore.multithreading.user.entity.User;
@@ -32,7 +33,7 @@ public class PessimisticLockingTest {
     UserTicketRepository userTicketRepository;
 
     @Autowired
-    UserService userService;
+    TicketService ticketService;
 
     @BeforeEach
     public void beforeTest() {
@@ -47,13 +48,13 @@ public class PessimisticLockingTest {
         ticketRepository.save(ticket);
 
         //20명의 사용자
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 20; i++) {
             User user = User.builder().build();
             userRepository.save(user);
         }
     }
 
-//    @AfterEach
+    @AfterEach
     public void afterTest() {
         userTicketRepository.deleteAll();
         ticketRepository.deleteAll();
@@ -73,7 +74,7 @@ public class PessimisticLockingTest {
             final long userId = i; // assuming user IDs are assigned sequentially starting from 1
             executorService.submit(() -> {
                 try {
-                    userService.buyWithPessimisticLock(userId , 1L , 1L);
+                    ticketService.buyWithPessimisticLock(userId , 1L , 1L);
                 } finally {
                     latch.countDown();
                 }
