@@ -29,9 +29,9 @@ public class UserTicket {
     private Ticket ticket;
 
     public void addUser(User user) {
-        if (user.getTickets().size() < TicketBuyLimit.MAXIMUM_TICKET_COUNT.getValue()) {
-            throw new IllegalArgumentException("2개 이상 구매 불가능합니다.");
-        }
+//        if (user.getTickets().size() < TicketBuyLimit.MAXIMUM_TICKET_COUNT.getValue()) {
+//            throw new IllegalArgumentException("2개 이상 구매 불가능합니다.");
+//        }
         this.user = user;
         user.getTickets().add(this);
     }

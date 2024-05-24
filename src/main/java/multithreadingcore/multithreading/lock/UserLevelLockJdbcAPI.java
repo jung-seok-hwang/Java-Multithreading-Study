@@ -8,8 +8,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 
 
@@ -20,59 +18,46 @@ public class UserLevelLockJdbcAPI {
 
     private static final String GET_LOCK = "SELECT GET_LOCK(:userLockName, :timeoutSeconds)";
     private static final String RELEASE_LOCK = "SELECT RELEASE_LOCK(:userLockName)";
-    private static final String EXCEPTION_EXTRACTOR = "LOCK EXCEPTION";
-
-    private static final ResultSetExtractor<Integer> RESULT_SET_EXTRACTOR = rs -> {
-        if (rs.next()) {
-            return rs.getInt(1);
-        }
-        return null;
-    };
+    private static final String LOCK_ERROR_MSG = "Error during lock operation.";
+    private static final ResultSetExtractor<Integer> RESULT_SET_EXTRACTOR = rs -> rs.next() ? rs.getInt(1) : null;
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    public <T> T executeWithLock(
-            String userLockName,
-            Integer timeoutSeconds,
-            Supplier<T> supplier
-    ) {
+
+    public <T> T executeWithLock(String userLockName, int timeoutSeconds, Supplier<T> supplier) {
         try {
-            get(userLockName, timeoutSeconds);
+            getLock(userLockName, timeoutSeconds);
             return supplier.get();
         } finally {
             releaseLock(userLockName);
         }
     }
 
-    //get Lock
-    public void get(String userLockName, Integer timeoutSeconds) {
+    private void getLock(String userLockName, int timeoutSeconds) {
         Map<String, Object> params = new HashMap<>();
-
         params.put("userLockName", userLockName);
         params.put("timeoutSeconds", timeoutSeconds);
-        log.info("GetLock!! userLockName : [{}], timeoutSeconds : [{}]", userLockName, timeoutSeconds);
+        log.info("Acquiring lock: userLockName = [{}], timeoutSeconds = [{}]", userLockName, timeoutSeconds);
         Integer result = namedParameterJdbcTemplate.queryForObject(GET_LOCK, params, Integer.class);
-        checkResult(result, userLockName, "ReleaseLock");
+        checkResult(result, userLockName, "GetLock");
     }
 
-    //자원 반납
     private void releaseLock(String userLockName) {
         Map<String, Object> params = new HashMap<>();
         params.put("userLockName", userLockName);
+        log.info("Releasing lock: userLockName = [{}]", userLockName);
         Integer result = namedParameterJdbcTemplate.queryForObject(RELEASE_LOCK, params, Integer.class);
         checkResult(result, userLockName, "ReleaseLock");
     }
 
     private void checkResult(Integer result, String userLockName, String type) {
         if (result == null) {
-            throw new RuntimeException("Lock is null");
+            log.error("No result for the lock operation. type = [{}], userLockName = [{}]", type, userLockName);
+            throw new RuntimeException(LOCK_ERROR_MSG + " No result returned.");
         }
-
         if (result != 1) {
-            log.error("USER LEVEL LOCK 쿼리 결과 값이 1이 아닙니다. type = [{}], result : [{}] userLockName : [{}]", type, result, userLockName);
-            throw new RuntimeException("Lock result is not 1");
+            log.error("Lock operation failed. type = [{}], result = [{}], userLockName = [{}]", type, result, userLockName);
+            throw new RuntimeException(LOCK_ERROR_MSG + " Expected result 1, got " + result + ".");
         }
     }
-
-
 }
