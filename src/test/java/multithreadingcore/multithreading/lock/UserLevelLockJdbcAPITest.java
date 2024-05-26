@@ -16,15 +16,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import java.util.concurrent.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Slf4j
@@ -35,89 +35,96 @@ class UserLevelLockJdbcAPITest {
     @Autowired
     private MockMvc mvc;
 
-    @Autowired
-    UserRepository userRepository;
-
-    @Autowired
-    TicketRepository ticketRepository;
-
-    @Autowired
-    UserTicketRepository userTicketRepository;
-
-    @Autowired
-    TicketService ticketService;
+    @MockBean
+    private TicketRepository ticketRepository;
 
     @MockBean
-    private UserLevelLockJdbcAPI userLevelLockJdbcAPI;
+    private UserRepository userRepository;
 
+    @MockBean
+    private UserTicketRepository userTicketRepository;
+
+    @MockBean
+    private TicketService ticketService;
+
+    private final List<User> users = new ArrayList<>();
 
     @BeforeEach
     public void beforeTest() {
-
         String serial = UUID.randomUUID().toString();
-
-        //한개 의 티켓
-        Ticket ticket = Ticket.builder()
+        Ticket testTicket = Ticket.builder()
                 .serial(serial)
                 .quantity(20L)
                 .build();
-        ticketRepository.save(ticket);
+        ticketRepository.save(testTicket);
 
-        //20명의 사용자
         for (int i = 0; i < 20; i++) {
             User user = User.builder().build();
             userRepository.save(user);
+            users.add(user);
         }
     }
 
-    @AfterEach
-    public void afterTest() {
-        userTicketRepository.deleteAll();
-        ticketRepository.deleteAll();
-        userRepository.deleteAll();
-    }
-
+//    @AfterEach
+//    public void afterTest() {
+//        userTicketRepository.deleteAll();
+//        ticketRepository.deleteAll();
+//        userRepository.deleteAll();
+//    }
 
     @Test
     public void 구매() throws Exception {
-        when(userLevelLockJdbcAPI.executeWithLock(anyString(), anyInt(), any())).thenReturn(1);
-
         int threadCount = 20;
-        CountDownLatch latch = new CountDownLatch(threadCount);
         ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        List<Future<ResultActions>> futures = new ArrayList<>();
+
+//        for (User user : users) {
+//            Callable<ResultActions> task = () -> {
+//                ResultActions result = mvc.perform(post("/buy")
+//                                .contentType(MediaType.APPLICATION_JSON)
+//                                .content(String.format("""
+//                                        {
+//                                            "userId": %d,
+//                                            "ticketId": 1,
+//                                            "quantity": 1
+//                                        }
+//                                        """, user.getId())))
+//                        .andExpect(status().isOk())
+//                        .andDo(print());
+//                latch.countDown();
+//                return result;
+//            };
+//            futures.add(executorService.submit(task));
+//        }
 
         for (int i = 1; i <= threadCount; i++) {
-            final long userId = i;
-            executorService.submit(() -> {
-                try {
-                    mvc.perform(post("/buy")
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .content(String.format("""
-                                            {
-                                                "userId": %d,
-                                                "ticketId": 1,
-                                                "quantity": 1
-                                            }
-                                            """, userId)))
-                            .andExpect(status().isOk())  // HTTP 상태 코드 검증
-                            .andDo(print());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    latch.countDown();
-                }
-            });
-        }
-        latch.await(); // 기다림 모든 스레드``가 완료될 때까지
 
-        // 여기서 필요한 경우에 모의 객체의 특정 메소드 호출을 검증
-        verify(userLevelLockJdbcAPI, times(threadCount)).executeWithLock(anyString(), eq(3), any());
+            long userid = i;
+            Callable<ResultActions> task = () -> {
+                ResultActions result = mvc.perform(post("/buy")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(String.format("""
+                                        {
+                                            "userId": %d,
+                                            "ticketId": 1,
+                                            "quantity": 1
+                                        }
+                                        """, userid)))
+                        .andExpect(status().isOk())
+                        .andDo(print());
+                latch.countDown();
+                return result;
+            };
+            futures.add(executorService.submit(task));
+        }
+
+        latch.await(); // 모든 스레드가 완료될 때까지 대기
         executorService.shutdown();
 
-        Ticket ticket = ticketRepository.findById(1L).orElseThrow();
-
-        log.info("티켓 정보 = {}", ticket);
-
+        // 테스트의 결과를 확인
+        for (Future<ResultActions> future : futures) {
+            future.get().andExpect(jsonPath("$.ticket").value(1));
+        }
     }
-
 }
