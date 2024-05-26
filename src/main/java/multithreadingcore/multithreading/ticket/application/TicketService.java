@@ -70,13 +70,10 @@ public class TicketService {
 
     @Transactional
     public Integer userLevelLockBuy(Long userId, Long ticketId, Long quantity) {
-        //사용자 정보 찾기
         User user = userRepository.findById(userId).orElseThrow();
 
-        //구매 할 티켓에 정보를 찾기
         Ticket ticket = ticketRepository.findById(ticketId).orElseThrow();
 
-        //감소
         ticket.decrease(quantity);
         ticketRepository.saveAndFlush(ticket);
 

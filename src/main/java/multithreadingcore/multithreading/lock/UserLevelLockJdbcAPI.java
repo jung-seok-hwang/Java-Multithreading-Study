@@ -27,7 +27,9 @@ public class UserLevelLockJdbcAPI {
     public <T> T executeWithLock(String userLockName, int timeoutSeconds, Supplier<T> supplier) {
         try {
             getLock(userLockName, timeoutSeconds);
-            return supplier.get();
+            T t = supplier.get();
+            log.info("타입 에 대한 정보 = {}" , t);
+            return t;
         } finally {
             releaseLock(userLockName);
         }
