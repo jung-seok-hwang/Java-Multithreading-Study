@@ -1,7 +1,6 @@
 package multithreadingcore.multithreading.lock;
 
 import lombok.extern.slf4j.Slf4j;
-import multithreadingcore.multithreading.ticket.application.TicketService;
 import multithreadingcore.multithreading.ticket.entity.Ticket;
 import multithreadingcore.multithreading.ticket.repository.TicketRepository;
 import multithreadingcore.multithreading.user.entity.User;
@@ -44,9 +43,6 @@ class UserLevelLockJdbcAPITest {
     @MockBean
     private UserTicketRepository userTicketRepository;
 
-    @MockBean
-    private TicketService ticketService;
-
     private final List<User> users = new ArrayList<>();
 
     @BeforeEach
@@ -65,12 +61,12 @@ class UserLevelLockJdbcAPITest {
         }
     }
 
-//    @AfterEach
-//    public void afterTest() {
-//        userTicketRepository.deleteAll();
-//        ticketRepository.deleteAll();
-//        userRepository.deleteAll();
-//    }
+    @AfterEach
+    public void afterTest() {
+        userTicketRepository.deleteAll();
+        ticketRepository.deleteAll();
+        userRepository.deleteAll();
+    }
 
     @Test
     public void 구매() throws Exception {
@@ -79,27 +75,7 @@ class UserLevelLockJdbcAPITest {
         CountDownLatch latch = new CountDownLatch(threadCount);
         List<Future<ResultActions>> futures = new ArrayList<>();
 
-//        for (User user : users) {
-//            Callable<ResultActions> task = () -> {
-//                ResultActions result = mvc.perform(post("/buy")
-//                                .contentType(MediaType.APPLICATION_JSON)
-//                                .content(String.format("""
-//                                        {
-//                                            "userId": %d,
-//                                            "ticketId": 1,
-//                                            "quantity": 1
-//                                        }
-//                                        """, user.getId())))
-//                        .andExpect(status().isOk())
-//                        .andDo(print());
-//                latch.countDown();
-//                return result;
-//            };
-//            futures.add(executorService.submit(task));
-//        }
-
-        for (int i = 1; i <= threadCount; i++) {
-
+        for (long i = 1; i <= threadCount; i++) {
             long userid = i;
             Callable<ResultActions> task = () -> {
                 ResultActions result = mvc.perform(post("/buy")
@@ -119,10 +95,9 @@ class UserLevelLockJdbcAPITest {
             futures.add(executorService.submit(task));
         }
 
-        latch.await(); // 모든 스레드가 완료될 때까지 대기
+        latch.await();
         executorService.shutdown();
 
-        // 테스트의 결과를 확인
         for (Future<ResultActions> future : futures) {
             future.get().andExpect(jsonPath("$.ticket").value(1));
         }
