@@ -3,6 +3,7 @@ package multithreadingcore.multithreading.ticket.application;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import multithreadingcore.multithreading.ticket.dto.request.TicketRequest;
 import multithreadingcore.multithreading.ticket.entity.Ticket;
 import multithreadingcore.multithreading.user.entity.UserTicket;
 import multithreadingcore.multithreading.ticket.repository.TicketRepository;
@@ -11,6 +12,7 @@ import multithreadingcore.multithreading.user.entity.User;
 import multithreadingcore.multithreading.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import static multithreadingcore.multithreading.ticket.entity.TicketBuyLimit.MAXIMUM_TICKET_COUNT;
 
 
 @Slf4j
@@ -29,7 +31,6 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(ticketId).orElseThrow();
 
         ticket.decrease(quantity);
-        user.maxTicketCount(quantity);
 
         ticketRepository.saveAndFlush(ticket);
 
@@ -39,7 +40,6 @@ public class TicketService {
                 .build();
 
         userTicket.addUser(user);
-
         userTicketRepository.save(userTicket);
     }
 
@@ -54,7 +54,6 @@ public class TicketService {
         log.info("티켓 수량 대한 정보 = {}" , ticket.getQuantity());
 
         ticket.decrease(quantity);
-        user.maxTicketCount(quantity);
 
         ticketRepository.saveAndFlush(ticket);
 
@@ -69,13 +68,16 @@ public class TicketService {
     }
 
     @Transactional
-    public Integer userLevelLockBuy(Long userId, Long ticketId, Long quantity) {
-        User user = userRepository.findById(userId).orElseThrow();
+    public Integer userLevelLockBuy(TicketRequest ticketRequest) {
+        User user = userRepository.findById(ticketRequest.getUserId()).orElseThrow();
 
-        Ticket ticket = ticketRepository.findById(ticketId).orElseThrow();
+        if (user.getTickets().size() >= MAXIMUM_TICKET_COUNT.getValue()) {
+            throw new IllegalArgumentException("Cannot purchase more than 2 tickets.");
+        }
 
-        ticket.decrease(quantity);
-        ticketRepository.saveAndFlush(ticket);
+        Ticket ticket = ticketRepository.findById(ticketRequest.getTicketId()).orElseThrow();
+        ticket.decrease(ticketRequest.getQuantity());
+        ticketRepository.save(ticket);
 
         UserTicket userTicket = UserTicket.builder()
                 .user(user)
@@ -83,10 +85,8 @@ public class TicketService {
                 .build();
 
         userTicket.addUser(user);
-
         userTicketRepository.save(userTicket);
 
         return user.getTicketCount();
     }
-
 }

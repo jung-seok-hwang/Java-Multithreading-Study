@@ -1,7 +1,6 @@
 package multithreadingcore.multithreading.ticket.controller;
 
 
-import io.micrometer.observation.Observation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import multithreadingcore.multithreading.lock.UserLevelLockJdbcAPI;
@@ -9,7 +8,6 @@ import multithreadingcore.multithreading.ticket.application.TicketService;
 import multithreadingcore.multithreading.ticket.dto.repsonse.TicketResponse;
 import multithreadingcore.multithreading.ticket.dto.request.TicketRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,14 +27,12 @@ public class TicketController {
             @RequestBody TicketRequest ticketRequest
             ) {
 
-        Integer lock = userLevelLockJdbcAPI.executeWithLock(
+        Integer userTicket = userLevelLockJdbcAPI.executeWithLock(
                 String.valueOf(ticketRequest.getUserId()),
                 LOCK_TIMEOUT_SECONDS,
-                () -> ticketService.userLevelLockBuy(ticketRequest.getUserId(), ticketRequest.getTicketId(), ticketRequest.getQuantity()));
+                () -> ticketService.userLevelLockBuy(ticketRequest));
 
-        log.info("구매 정보 = {}" , lock);
-
-        TicketResponse result = TicketResponse.builder().ticket(lock).build();
+        TicketResponse result = TicketResponse.builder().ticket(userTicket).build();
 
 
         return ResponseEntity.ok().body(result);
